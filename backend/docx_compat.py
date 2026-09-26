@@ -95,16 +95,14 @@ def convert(raw,name):
   folder.mkdir(parents=True,exist_ok=True);pdf=folder/'render.pdf';meta=folder/'conversion.json'
   if pdf.is_file() and meta.is_file():return pdf.read_bytes(),json.loads(meta.read_text())
   safe,count=sanitize(raw);(folder/'original.docx').write_bytes(raw)
-  executable=os.environ.get('QUESTION_BANK_SOFFICE') or shutil.which('soffice')
-  if not executable:
-   p=Path.home()/'.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice'
-   if p.is_file():executable=str(p)
+  from .platform_runtime import soffice
+  executable=soffice()
   if not executable:raise ValueError('旧公式Word需要本地LibreOffice转换，目前未安装')
   with tempfile.TemporaryDirectory(prefix='word-preview-') as tmp:
    tmp=Path(tmp);src=tmp/'render.docx';src.write_bytes(safe);profile=tmp/'profile'
    fonts=tmp/'fonts.conf'
    fonts.write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/System/Library/Fonts/Supplemental</dir><cachedir>'+str(tmp/'font-cache')+'</cachedir><alias><family>SimSun</family><prefer><family>Songti SC</family></prefer></alias><alias><family>宋体</family><prefer><family>Songti SC</family></prefer></alias><alias><family>Calibri</family><prefer><family>Arial</family></prefer></alias><alias><family>sans-serif</family><prefer><family>Arial Unicode MS</family></prefer></alias></fontconfig>')
-   env=dict(os.environ,FONTCONFIG_FILE=str(fonts))
+   env=dict(os.environ) if os.name=='nt' else dict(os.environ,FONTCONFIG_FILE=str(fonts))
    proc=subprocess.run([executable,'-env:UserInstallation='+profile.as_uri(),'--headless','--convert-to','pdf:writer_pdf_Export','--outdir',str(tmp),str(src)],capture_output=True,timeout=180,env=env)
    rendered=tmp/'render.pdf'
    if proc.returncode or not rendered.is_file():raise ValueError('旧公式Word转换失败，未提交模型：'+proc.stderr.decode(errors='replace')[-300:])

@@ -130,14 +130,16 @@ def single_drawing_docx(pict,archive,relations):
 
 def render_drawings(items,archive,relations,folder):
     if not items:return []
-    exe=os.environ.get('QUESTION_BANK_SOFFICE') or shutil.which('soffice') or str(Path.home()/'.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice')
+    from .platform_runtime import soffice
+    exe=soffice()
+    if not exe:raise ValueError("此 Word 的旧公式或组合图需要 LibreOffice，请安装后重试")
     records=[];folder=Path(folder)
     with tempfile.TemporaryDirectory(prefix='word-native-drawings-') as tmp:
         tmp=Path(tmp);paths=[]
         for name,pict in items:
             src=tmp/(Path(name).stem+'.docx');src.write_bytes(single_drawing_docx(pict,archive,relations));paths.append(str(src))
         fonts=tmp/'fonts.conf';fonts.write_text('<fontconfig><dir>/System/Library/Fonts</dir><dir>/System/Library/Fonts/Supplemental</dir><dir>/Applications/Microsoft Word.app/Contents/Resources/DFonts</dir><cachedir>'+str(tmp/'cache')+'</cachedir><alias><family>宋体</family><prefer><family>Songti SC</family></prefer></alias><alias><family>微软雅黑</family><prefer><family>Heiti SC</family></prefer></alias></fontconfig>')
-        result=subprocess.run([exe,'-env:UserInstallation='+(tmp/'profile').as_uri(),'--headless','--convert-to','pdf:writer_pdf_Export','--outdir',str(tmp),*paths],capture_output=True,timeout=180,env=dict(os.environ,FONTCONFIG_FILE=str(fonts)))
+        result=subprocess.run([exe,'-env:UserInstallation='+(tmp/'profile').as_uri(),'--headless','--convert-to','pdf:writer_pdf_Export','--outdir',str(tmp),*paths],capture_output=True,timeout=180,env=(dict(os.environ) if os.name=='nt' else dict(os.environ,FONTCONFIG_FILE=str(fonts))))
         for name,pict in items:
             pdf=tmp/(Path(name).stem+'.pdf')
             if result.returncode or not pdf.is_file():raise ValueError('Word原生组合图未能完整渲染：'+name)

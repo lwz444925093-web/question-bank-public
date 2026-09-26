@@ -32,7 +32,9 @@ def convert_vectors(items, folder):
     stamp=folder/'native-vector-fonts-v3.ok'
     missing=[(name,raw) for name,raw in items if not (folder/name).exists() or not stamp.exists()]
     if not missing:return
-    exe=os.environ.get('QUESTION_BANK_SOFFICE') or shutil.which('soffice') or str(Path.home()/'.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice')
+    from .platform_runtime import soffice
+    exe=soffice()
+    if not exe:raise ValueError("此 Word 的旧公式或组合图需要 LibreOffice，请安装后重试")
     with tempfile.TemporaryDirectory(prefix='word-assets-') as tmp:
         tmp=Path(tmp); paths=[]
         for name,raw in missing:
@@ -43,7 +45,7 @@ def convert_vectors(items, folder):
             etree.SubElement(font_config,'dir').text=directory
         etree.SubElement(font_config,'cachedir').text=str(tmp/'cache')
         fonts=tmp/'fonts.conf';fonts.write_bytes(etree.tostring(font_config,encoding='utf-8'))
-        proc=subprocess.run([exe,'-env:UserInstallation='+(tmp/'profile').as_uri(),'--headless','--convert-to','png:draw_png_Export:{"PixelWidth":{"type":"long","value":3000}}','--outdir',str(tmp),*paths],capture_output=True,timeout=180,env=dict(os.environ,FONTCONFIG_FILE=str(fonts)))
+        proc=subprocess.run([exe,'-env:UserInstallation='+(tmp/'profile').as_uri(),'--headless','--convert-to','png:draw_png_Export:{"PixelWidth":{"type":"long","value":3000}}','--outdir',str(tmp),*paths],capture_output=True,timeout=180,env=(dict(os.environ) if os.name=='nt' else dict(os.environ,FONTCONFIG_FILE=str(fonts))))
         for name,_ in missing:
             rendered=tmp/name
             def content():
@@ -56,7 +58,7 @@ def convert_vectors(items, folder):
                 # LibreOffice batch import sometimes emits an empty canvas for a
                 # valid WMF. A fresh isolated document recovers its saved drawing.
                 retry=tmp/('retry-'+Path(name).stem);retry.mkdir()
-                subprocess.run([exe,'-env:UserInstallation='+(retry/'profile').as_uri(),'--headless','--convert-to','png','--outdir',str(retry),str(tmp/(Path(name).stem+'.wmf'))],capture_output=True,timeout=45,env=dict(os.environ,FONTCONFIG_FILE=str(fonts)))
+                subprocess.run([exe,'-env:UserInstallation='+(retry/'profile').as_uri(),'--headless','--convert-to','png','--outdir',str(retry),str(tmp/(Path(name).stem+'.wmf'))],capture_output=True,timeout=45,env=(dict(os.environ) if os.name=='nt' else dict(os.environ,FONTCONFIG_FILE=str(fonts))))
                 rendered=retry/name;result=content()
             if result is None:raise ValueError('Word图片未能完整读取，原文件已保留：'+name)
             rgb,bbox=result;left,top,right,bottom=bbox

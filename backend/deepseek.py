@@ -120,6 +120,12 @@ def open_window(session_id=None):
         raise ValueError('未找到这个题库会话')
     directory=store.DATA/'opencode-work'; directory.mkdir(exist_ok=True)
     url='opencode://open-project?'+urlencode({'directory':str(directory)})
-    result=subprocess.run(['/usr/bin/open','-a','OpenCode',url],capture_output=True,timeout=10)
-    if result.returncode: raise ValueError('无法打开 OpenCode 桌面版，请检查安装')
+    if os.name=='nt':
+        try:os.startfile(url)
+        except OSError:raise ValueError('未安装 OpenCode 桌面版；命令行 API 调用仍可使用') from None
+    else:
+        import sys
+        cmd=['/usr/bin/open','-a','OpenCode',url] if sys.platform=='darwin' else ['xdg-open',url]
+        result=subprocess.run(cmd,capture_output=True,timeout=10)
+        if result.returncode:raise ValueError('无法打开 OpenCode 桌面版；命令行 API 调用仍可使用')
     return {'ok':True,'session_id':session_id,'message':'已打开题库项目，请在会话列表按任务标题查找；当前桌面版不支持直接定位会话的深链接。'}

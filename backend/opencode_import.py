@@ -2,6 +2,7 @@
 import ast,json,hashlib,os,shutil,subprocess,time,signal,re
 from pathlib import Path
 from . import store
+from .platform_runtime import process_options, stop_process, opencode_command
 from .model import ParseResult
 from .provider import ProviderError,PROMPT_VERSION
 from .request_boundary import RequestFailure
@@ -43,7 +44,7 @@ class OpenCodeProvider:
         model=self.config.get('model') or 'deepseek/deepseek-flash'
         if bundle.get('images') and model not in ['deepseek/deepseek-flash','deepseek/deepseek-v4-flash','deepseek/deepseek-v4-flash-vision-exp']:
             raise RequestFailure('当前配置模型未确认支持图片，保留材料待诊断，不自动切换模型','unsupported_image')
-        executable=shutil.which('opencode')
+        executable=opencode_command()
         if not executable: raise RequestFailure('未找到本机 OpenCode','dependency')
         taskdir=Path(taskdir);taskdir.mkdir(parents=True,exist_ok=True)
         from .vision_inputs import write_input_manifest
@@ -51,16 +52,16 @@ class OpenCodeProvider:
         directory=taskdir/'worker';directory.mkdir(exist_ok=True)
         material={k:v for k,v in bundle.items() if k!='images'}
         prompt=instruction+'\n仅返回完整 JSON，不使用代码围栏。不要输出内部思考。Schema：'+json.dumps(schema,ensure_ascii=False)+'\n材料：'+json.dumps(material,ensure_ascii=False)
-        cmd=[executable,'run','--pure','--format','json','--dir',str(directory),'--model',model,*(['--variant',reasoning] if reasoning!='default' else []),'--title',bundle.get('session_title','题库导入')+' · '+bundle.get('display_name',bundle['original'])+' · '+taskdir.name[:8]]
+        cmd=[*executable,'run','--pure','--format','json','--dir',str(directory),'--model',model,*(['--variant',reasoning] if reasoning!='default' else []),'--title',bundle.get('session_title','题库导入')+' · '+bundle.get('display_name',bundle['original'])+' · '+taskdir.name[:8]]
         for image in bundle.get('images',[]): cmd+=['--file',image]
         # OpenCode applies min(model.limit.output, override); avoid its extra application cap.
         env=dict(os.environ,OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX='2147483647',OPENCODE_CONFIG_CONTENT=json.dumps({'permission':{'*':'deny'}}))
-        prompt_file=taskdir/'prompt.private.txt';prompt_file.write_text(prompt)
+        prompt_file=taskdir/'prompt.private.txt';prompt_file.write_text(prompt,encoding="utf-8")
         eventfile=taskdir/'opencode.private.jsonl';events=[];session=None;usage={};cursor=0;partial='';error=False;finish_reason=None
         started=time.monotonic();last=started;step_usage=[];started_at=time.time()
         def consume(final=False):
             nonlocal cursor,partial,session,error,usage,finish_reason
-            with eventfile.open() as reader: reader.seek(cursor);chunk=reader.read();cursor=reader.tell()
+            with eventfile.open(encoding="utf-8") as reader: reader.seek(cursor);chunk=reader.read();cursor=reader.tell()
             lines=(partial+chunk).split('\n');partial=lines.pop()
             if final and partial.strip():lines.append(partial);partial=''
             from .request_boundary import record_steps,policy
@@ -88,7 +89,7 @@ class OpenCodeProvider:
                         raise RequestFailure('OpenCode 内部可观测步骤达到上限，原始事件已保留','budget')
         progress('调用 OpenCode / '+model+'：识别知识点、题目和答案（思考深度 '+reasoning+'，使用模型自身最大输出量）')
         with prompt_file.open() as source,eventfile.open('w') as output,(taskdir/'stderr.private.log').open('w') as err:
-            proc=subprocess.Popen(cmd,stdin=source,stdout=output,stderr=err,text=True,env=env,start_new_session=True)
+            proc=subprocess.Popen(cmd,stdin=source,stdout=output,stderr=err,text=True,env=env,**process_options())
             try:
                 while proc.poll() is None:
                     consume()
@@ -99,9 +100,7 @@ class OpenCodeProvider:
                     time.sleep(.2)
             finally:
                 if proc.poll() is None:
-                    os.killpg(proc.pid,signal.SIGTERM)
-                    try:proc.wait(timeout=5)
-                    except subprocess.TimeoutExpired:os.killpg(proc.pid,signal.SIGKILL);proc.wait()
+                    stop_process(proc)
         consume(final=True)
         from .costs import flash_cost
         totals={k:sum(u.get(k,0) for u in step_usage) for k in ['input','output','reasoning']}

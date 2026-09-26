@@ -22,3 +22,6 @@
 *.zip
 *.png
 *.jpg
+
+.setup-cache/
+materials/

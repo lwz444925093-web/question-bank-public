@@ -6,7 +6,9 @@
 
 ## 安装
 
-当前发布针对 macOS 本地运行。Windows 适配尚未进入正式版，此仓库不是经过 Windows 验收的安装包。
+**从这里开始：[完整安装引导](INSTALL.md)**。下载 ZIP 并解压后，也可双击 `install-guide.html` 查看图文步骤。
+
+Windows 依次双击 `01-install.cmd`、`02-setup-api.cmd`、`03-start.cmd`。需要先安装 Python 3.11 x64、Node.js 和 OpenCode CLI。安装和 API 引导已加入，但尚未经过 Windows 实机验收。
 
 需要 Python 3.11、兼容 Vite 8 的 Node.js（22.12+），以及所选模型服务需要的 OpenCode CLI 或 Codex CLI。部分 Word 旧公式、组合图需要 LibreOffice。API 账户与费用由使用者自行配置和承担。
 
@@ -23,7 +25,7 @@ sh start.sh
 
 本机数据库、上传材料、导出文件和 API 配置不会随此仓库发布。向 AI 服务发起识别或生成请求时，对应题目文字和必要图片会发送给所配置的模型服务。
 
-仅在维护者明确发布时手动上传正式源码，没有自动同步或自动更新。保留本机 `data/`、`materials/` 和私人配置；更新程序前自行备份。此前私有测试版的 Windows 安装引导不适用于本版本。
+仅在维护者明确发布时手动上传正式源码，没有自动同步或自动更新。保留本机 `data/`、`materials/` 和私人配置；更新程序前自行备份。请使用本仓库随附的安装引导，不要混用其他目录的旧脚本。
 
 ## 许可证
 
