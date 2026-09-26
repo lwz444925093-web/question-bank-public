@@ -1,0 +1,23 @@
+{
+  "algorithm_version": "native-regions-1.5-r2",
+  "cluster_gap_em": 0.65,
+  "detached_curve_gap_em": 2.75,
+  "label_reach_em": 1.35,
+  "padding_em": 0.35,
+  "max_padding_pt": 5.0,
+  "max_cluster_area_fraction": 0.32,
+  "max_cluster_width_fraction": 0.82,
+  "max_cluster_height_fraction": 0.65,
+  "max_objects": 6000,
+  "max_path_items": 30000,
+  "max_render_pixels": 30000000,
+  "page_timeout_seconds": 45,
+  "max_input_bytes": 104857600,
+  "raster_analysis_dpi": 144,
+  "raster_contrast_threshold": 22,
+  "max_raster_components": 20000,
+  "max_raster_children": 8,
+  "max_split_depth": 4,
+  "split_gap_pt": 11,
+  "split_padding_pt": 2.5
+}

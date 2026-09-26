@@ -1,0 +1,15 @@
+{
+  "algorithm_version": "raster-page-r2",
+  "analysis_dpi": 144,
+  "max_analysis_pixels": 10000000,
+  "max_components": 16000,
+  "max_regions": 100,
+  "max_figure_fraction": 0.24,
+  "label_reach_em": 1.65,
+  "max_safe_expansion_em": 2.5,
+  "max_safe_expansion_pt": 28,
+  "max_figure_height_fraction": 0.4,
+  "page_timeout_seconds": 30,
+  "max_render_pixels": 30000000,
+  "max_input_bytes": 104857600
+}

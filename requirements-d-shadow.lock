@@ -1,0 +1,4 @@
+# Additional deterministic Region dependencies, separate from the existing runtime.
+# Installed here in work/d-shadow-deps; no imports from tools/region_lab at runtime.
+numpy==2.0.2
+opencv-python-headless==4.11.0.86

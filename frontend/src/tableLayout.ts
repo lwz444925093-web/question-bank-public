@@ -1,0 +1,2 @@
+export function cellLength(cell:any[]){const text=cell.map(s=>s.text||'').join('').replace(/\\[A-Za-z]+/g,'x');return Math.max(0,...text.split(/\r?\n/).map(line=>Array.from(line).reduce((n,c)=>n+(c.charCodeAt(0)>255?1:.55),0)))}
+export function tableWidths(rows:any[][]){const count=Math.max(0,...rows.map(r=>r.length));const weights=Array.from({length:count},(_,j)=>Math.max(4,Math.min(18,Math.max(0,...rows.map(r=>cellLength(r[j]||[])))+2)));const sum=weights.reduce((a,b)=>a+b,0);return weights.map(w=>100*w/sum)}

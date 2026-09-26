@@ -1,0 +1,18 @@
+import React,{useState,useEffect} from 'react';
+import {createPortal} from 'react-dom';
+export function sourcePictureUrl(sourceId:string,asset:string){
+ return /^[a-f0-9]{64}$/.test(sourceId||'')&&!!asset&&!/[\\/]/.test(asset)&&!asset.startsWith('.')?`/api/source/${sourceId}/${encodeURIComponent(asset)}`:'';
+}
+export function SourcePicture({sourceId,asset,record,originalView,onOriginalChange}:any){
+ const [localOriginal,setLocalOriginal]=useState(false);const showOriginal=originalView??localOriginal;const setShowOriginal=(value:any)=>{const next=typeof value==='function'?value(showOriginal):value;setLocalOriginal(next);onOriginalChange?.(next)};const [wide,setWide]=useState(false);const [ratio,setRatio]=useState(0);const[nativeWidth,setNativeWidth]=useState(0);const original=record?.original_asset;const canCompare=!!record?.redrawn&&!!original&&original!==asset&&!!sourcePictureUrl(sourceId,original);
+ useEffect(()=>setLocalOriginal(false),[asset,original]);
+ const displayedAsset=canCompare&&showOriginal?original:asset;const isTable=record?.semantic_role==='reference_table'||record?.asset_type==='table';const readable=(wide&&nativeWidth>420)||(isTable&&nativeWidth>240);const manualCrop=!!displayedAsset?.startsWith('manual-crop-');const url=sourcePictureUrl(sourceId,displayedAsset);const[failed,setFailed]=useState('');const[open,O]=useState(false);
+ useEffect(()=>{if(!open)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';const escape=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.stopImmediatePropagation();O(false)}};window.addEventListener('keydown',escape,true);return()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',escape,true)}},[open]);
+ return <figure className={"source-picture"+(wide?" source-picture-wide":"")+(readable?" source-picture-readable":"")+((canCompare&&showOriginal?original:asset)?.toLowerCase().endsWith(".svg")?" source-picture-vector":"")} style={readable?{width:Math.min(nativeWidth,900)}:manualCrop&&ratio?{width:Math.min(nativeWidth,ratio>2?420:240,200*ratio)}:undefined} contentEditable={false}>
+ 
+ {canCompare&&<button className="picture-compare-badge" type="button" aria-pressed={showOriginal} aria-label={showOriginal?'当前为原图，点击切回AI重绘':'当前为AI重绘，点击查看原图'} title={(record?.note?record.note+'；':'')+'点击切换原图与重绘图'} onClick={e=>{e.stopPropagation();setShowOriginal(v=>!v)}}>{showOriginal?'原图 ⇄':'AI 重绘 ⇄'}</button>}
+ {url&&failed!==url?<button className="picture-thumbnail" style={manualCrop?{width:'100%'}:undefined} type="button" aria-label="放大题图" onClick={e=>{e.stopPropagation();O(true)}}><img style={manualCrop?{width:'100%',height:'auto'}:undefined} src={url} alt={canCompare&&!showOriginal?"AI重绘题图":"题目原图"} loading="lazy" onLoad={e=>{const value=e.currentTarget.naturalWidth/e.currentTarget.naturalHeight;setRatio(value);setWide(value>2);setNativeWidth(e.currentTarget.naturalWidth)}} onError={()=>setFailed(url)}/></button>:<span className="warning">原图暂时无法读取，请对照原始材料（{asset||'缺少图片引用'}）。</span>}
+ {open&&createPortal(<div className="image-lightbox" role="dialog" aria-modal="true" aria-label="题图放大预览" onClick={e=>{e.stopPropagation();if(e.target===e.currentTarget)O(false)}}><button className="image-lightbox-close" autoFocus onClick={e=>{e.stopPropagation();O(false)}}>关闭 ×</button>
+ {canCompare&&<button className="image-lightbox-compare" aria-pressed={showOriginal} onClick={e=>{e.stopPropagation();setShowOriginal(v=>!v)}}>{showOriginal?"原图 · 点击查看 AI 重绘":"AI 重绘 · 点击查看原图"}</button>}<img src={url} alt={canCompare&&!showOriginal?"放大的AI重绘题图":"放大的题目原图"}/><span className="image-lightbox-hint">点击空白处或按 Esc 关闭</span></div>,document.body)}
+ </figure>;
+}
